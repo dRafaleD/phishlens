@@ -1,0 +1,17 @@
+From: Account Team <alerts@example.com>
+Reply-To: recovery@account-help.test
+Return-Path: <bounce@account-help.test>
+Subject: Acil: Hesabiniz askiya alindi
+Date: Fri, 14 Aug 2026 09:00:00 +0300
+Message-ID: <demo@example.com>
+Authentication-Results: mail.example; spf=fail; dkim=fail; dmarc=fail
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html>
+  <body>
+    <p>Hesabinizi hemen dogrulayin:</p>
+    <a href="https://198.51.100.42/login">https://example.com/login</a>
+  </body>
+</html>
+

@@ -1,0 +1,8 @@
+[package]
+name = "safe-malware-simulator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.33"
+egui = "0.33"

@@ -1,0 +1,10 @@
+target/
+Cargo.lock
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.idea/
+.vscode/

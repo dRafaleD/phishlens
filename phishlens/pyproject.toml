@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phishlens"
+version = "0.4.0"
+description = "Explainable phishing analysis for EML files and IMAP mailboxes"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "PhishLens contributors" }]
+keywords = ["security", "phishing", "email", "eml", "imap", "machine-learning", "gui", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Environment :: Win32 (MS Windows)",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+
+[project.scripts]
+phishlens = "phishlens.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
