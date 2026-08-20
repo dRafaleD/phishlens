@@ -78,12 +78,22 @@ class FhniXApp:
         self._row_payload: dict[str, Finding | AnalysisResult] = {}
         self._displayed_report = ""
         self._scan_results: list[AnalysisResult] = []
+        self.brand_logo = self._load_brand_logo()
 
         self._configure_styles()
         self._build_layout()
         self._show_welcome()
         if initial_model_path is not None:
             self._load_model(initial_model_path, announce=False)
+
+    def _load_brand_logo(self) -> tk.PhotoImage | None:
+        logo_path = Path(__file__).resolve().parent / "assets" / "fhnix-logo.png"
+        try:
+            source = tk.PhotoImage(file=logo_path)
+        except tk.TclError:
+            return None
+        scale = max(1, max(source.width(), source.height()) // 58)
+        return source.subsample(scale, scale)
 
     def _configure_styles(self) -> None:
         style = ttk.Style(self.root)
@@ -206,7 +216,15 @@ class FhniXApp:
             highlightthickness=1,
             highlightbackground=self.BORDER,
         )
-        header.columnconfigure(0, weight=1)
+        header.columnconfigure(1, weight=1)
+
+        if self.brand_logo is not None:
+            tk.Label(
+                header,
+                image=self.brand_logo,
+                background=self.BRAND,
+                borderwidth=0,
+            ).grid(row=0, column=0, rowspan=2, sticky="w", padx=(0, 14))
 
         tk.Label(
             header,
@@ -214,14 +232,14 @@ class FhniXApp:
             background=self.BRAND,
             foreground="#B7D8CE",
             font=("Cascadia Mono", 9),
-        ).grid(row=0, column=0, sticky="w")
+        ).grid(row=0, column=1, sticky="w")
         tk.Label(
             header,
             text="FHNIX // MAIL TRIAGE",
             background=self.BRAND,
             foreground="#FFFFFF",
             font=("Cascadia Mono", 18, "bold"),
-        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ).grid(row=1, column=1, sticky="w", pady=(2, 0))
 
         badge = tk.Label(
             header,
@@ -232,7 +250,7 @@ class FhniXApp:
             padx=12,
             pady=7,
         )
-        badge.grid(row=0, column=1, rowspan=2, sticky="e")
+        badge.grid(row=0, column=2, rowspan=2, sticky="e")
         return header
 
     def _build_model_bar(self, parent: ttk.Frame) -> ttk.Frame:

@@ -5,6 +5,10 @@
 <h1 align="center">FhniX</h1>
 
 <p align="center">
+  <img src="src/phishlens/assets/fhnix-logo.png" alt="FhniX phoenix shield logo" width="96">
+</p>
+
+<p align="center">
   Explainable, local-first phishing triage for exported emails and read-only IMAP mailbox scans.
 </p>
 
