@@ -1,5 +1,9 @@
 # Safe Malware Behavior Simulator
 
+<p align="center">
+  <img src="docs/assets/fhnix-hero.png" alt="FhniX defensive telemetry simulator" width="100%">
+</p>
+
 Safe Malware Behavior Simulator is a defensive, educational Rust desktop app
 for demonstrating suspicious telemetry patterns without creating or executing
 real malware.
