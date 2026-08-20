@@ -31,7 +31,7 @@ class _ModelState:
     model: NaiveBayesModel | None = None
 
 
-class PhishLensApp:
+class FhniXApp:
     CANVAS = "#060B09"
     SURFACE = "#0D1613"
     SURFACE_ALT = "#111E1A"
@@ -47,7 +47,7 @@ class PhishLensApp:
 
     def __init__(self, root: tk.Tk, initial_model_path: Path | None = None) -> None:
         self.root = root
-        self.root.title("PhishLens // Email Risk Triage")
+        self.root.title("FhniX // Email Risk Triage")
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         window_width = min(1080, max(760, screen_width - 80))
@@ -64,7 +64,7 @@ class PhishLensApp:
         self.scan_directory_var = tk.StringVar()
         self.scan_recursive = tk.BooleanVar(value=True)
         self.train_dataset_var = tk.StringVar()
-        self.train_output_var = tk.StringVar(value="phishlens-model.json")
+        self.train_output_var = tk.StringVar(value="fhnix-model.json")
         self.validation_split_var = tk.StringVar(value="0.2")
         self.score_var = tk.StringVar(value="--")
         self.verdict_var = tk.StringVar(value="NO RESULT")
@@ -210,14 +210,14 @@ class PhishLensApp:
 
         tk.Label(
             header,
-            text="root@phishlens:~$ inspect --safe",
+            text="root@fhnix:~$ inspect --safe",
             background=self.BRAND,
             foreground="#B7D8CE",
             font=("Cascadia Mono", 9),
         ).grid(row=0, column=0, sticky="w")
         tk.Label(
             header,
-            text="PHISHLENS // MAIL TRIAGE",
+            text="FHNIX // MAIL TRIAGE",
             background=self.BRAND,
             foreground="#FFFFFF",
             font=("Cascadia Mono", 18, "bold"),
@@ -278,7 +278,7 @@ class PhishLensApp:
         frame = self._tab_shell(
             parent,
             "Inspect one message",
-            "Export the message as an .eml file. PhishLens will not open links or attachments.",
+            "Export the message as an .eml file. FhniX will not open links or attachments.",
         )
         tk.Label(
             frame,
@@ -516,10 +516,10 @@ class PhishLensApp:
         self.results_tree.insert("", "end", values=("2", "", "Analyze it without opening links", ""), tags=("welcome",))
         self.results_tree.insert("", "end", values=("3", "", "Review each explainable signal", ""), tags=("welcome",))
         self._set_output(
-            "PhishLens is ready.\n\n"
+            "FhniX is ready.\n\n"
             "Start in Analyze email for one message, or use Scan folder to rank a collection. "
             "Loading a trained model is optional; transparent security rules always run.\n\n"
-            "Safety note: PhishLens never visits links and never executes attachments."
+            "Safety note: FhniX never visits links and never executes attachments."
         )
 
     def _configure_tree(self, kind: str, score: str, detail: str, source: str) -> None:
@@ -587,7 +587,7 @@ class PhishLensApp:
     ) -> None:
         self._set_busy(False, "Ready")
         if error is not None:
-            messagebox.showerror("PhishLens", str(error))
+            messagebox.showerror("FhniX", str(error))
             self._set_status("Operation failed")
             return
         on_success(payload)
@@ -606,7 +606,7 @@ class PhishLensApp:
         try:
             model = NaiveBayesModel.load(path)
         except (OSError, ModelError, ValueError) as error:
-            messagebox.showerror("PhishLens", str(error))
+            messagebox.showerror("FhniX", str(error))
             self._set_status("Model could not be loaded")
             return
         self.model_state = _ModelState(path=path, model=model)
@@ -615,7 +615,7 @@ class PhishLensApp:
         self.model_score_var.set("Ready")
         self._set_status(f"Loaded model: {path.name}")
         if announce:
-            messagebox.showinfo("PhishLens", f"Model loaded:\n{path}")
+            messagebox.showinfo("FhniX", f"Model loaded:\n{path}")
 
     def _choose_analysis_file(self) -> None:
         selection = filedialog.askopenfilename(
@@ -634,15 +634,15 @@ class PhishLensApp:
         selection = filedialog.askdirectory(title="Choose a training dataset folder")
         if selection:
             self.train_dataset_var.set(selection)
-            suggested = Path(selection) / "phishlens-model.json"
-            if self.train_output_var.get() == "phishlens-model.json":
+            suggested = Path(selection) / "fhnix-model.json"
+            if self.train_output_var.get() == "fhnix-model.json":
                 self.train_output_var.set(str(suggested))
 
     def _choose_train_output(self) -> None:
         selection = filedialog.asksaveasfilename(
             title="Choose where to save the model",
             defaultextension=".json",
-            initialfile=Path(self.train_output_var.get() or "phishlens-model.json").name,
+            initialfile=Path(self.train_output_var.get() or "fhnix-model.json").name,
             filetypes=[("JSON model", "*.json"), ("All files", "*.*")],
         )
         if selection:
@@ -651,7 +651,7 @@ class PhishLensApp:
     def _analyze_selected_file(self) -> None:
         path = Path(self.analysis_file_var.get().strip())
         if not path.is_file() or path.suffix.lower() != ".eml":
-            messagebox.showerror("PhishLens", "Choose a valid .eml file first.")
+            messagebox.showerror("FhniX", "Choose a valid .eml file first.")
             return
         model = self.model_state.model
         self._run_task(
@@ -684,7 +684,7 @@ class PhishLensApp:
     def _scan_directory(self) -> None:
         root = Path(self.scan_directory_var.get().strip())
         if not root.is_dir():
-            messagebox.showerror("PhishLens", "Choose a valid folder first.")
+            messagebox.showerror("FhniX", "Choose a valid folder first.")
             return
         recursive = self.scan_recursive.get()
         model = self.model_state.model
@@ -729,7 +729,7 @@ class PhishLensApp:
                 tags=(tag,),
             )
             self._row_payload[item] = result
-        report = render_batch_text(results, title=f"PhishLens folder scan: {root}")
+        report = render_batch_text(results, title=f"FhniX folder scan: {root}")
         if skipped:
             report += f"\nSkipped unreadable messages: {skipped}"
         self._set_output(report)
@@ -738,12 +738,12 @@ class PhishLensApp:
 
     def _export_scan_csv(self) -> None:
         if not self._scan_results:
-            messagebox.showinfo("PhishLens", "Run a folder scan before exporting a CSV report.")
+            messagebox.showinfo("FhniX", "Run a folder scan before exporting a CSV report.")
             return
         selection = filedialog.asksaveasfilename(
             title="Export folder scan as CSV",
             defaultextension=".csv",
-            initialfile="phishlens-folder-scan.csv",
+            initialfile="fhnix-folder-scan.csv",
             filetypes=[("CSV spreadsheet", "*.csv"), ("All files", "*.*")],
         )
         if not selection:
@@ -751,7 +751,7 @@ class PhishLensApp:
         try:
             Path(selection).write_text(render_batch_csv(self._scan_results), encoding="utf-8-sig")
         except OSError as error:
-            messagebox.showerror("PhishLens", f"Could not export CSV: {error}")
+            messagebox.showerror("FhniX", f"Could not export CSV: {error}")
             return
         self._set_status(f"CSV folder report saved to {selection}")
 
@@ -760,15 +760,15 @@ class PhishLensApp:
         output_text = self.train_output_var.get().strip()
         output = Path(output_text) if output_text else Path()
         if not dataset.is_dir():
-            messagebox.showerror("PhishLens", "Choose a valid dataset folder first.")
+            messagebox.showerror("FhniX", "Choose a valid dataset folder first.")
             return
         if not output_text or output.suffix.lower() != ".json":
-            messagebox.showerror("PhishLens", "Choose a model output path ending in .json.")
+            messagebox.showerror("FhniX", "Choose a model output path ending in .json.")
             return
         try:
             validation_split = float(self.validation_split_var.get())
         except ValueError:
-            messagebox.showerror("PhishLens", "Validation must be a number like 0.2.")
+            messagebox.showerror("FhniX", "Validation must be a number like 0.2.")
             return
 
         def train() -> tuple[Path, NaiveBayesModel, TrainingReport]:
@@ -802,7 +802,7 @@ class PhishLensApp:
         self._set_output(render_training_report(report, str(output)))
         self.evidence_var.set("The new model is loaded and ready for the next analysis.")
         self._set_status(f"Model trained and saved to {output}")
-        messagebox.showinfo("PhishLens", f"Training complete.\nModel saved to:\n{output}")
+        messagebox.showinfo("FhniX", f"Training complete.\nModel saved to:\n{output}")
 
     def _update_metrics(self, score: int, verdict: str, signals: int, result: AnalysisResult) -> None:
         self.score_var.set(f"{score}/100")
@@ -841,7 +841,7 @@ class PhishLensApp:
         selection = filedialog.asksaveasfilename(
             title="Save report",
             defaultextension=".txt",
-            initialfile="phishlens-report.txt",
+            initialfile="fhnix-report.txt",
             filetypes=[("Text report", "*.txt"), ("All files", "*.*")],
         )
         if not selection:
@@ -849,7 +849,7 @@ class PhishLensApp:
         try:
             Path(selection).write_text(self._displayed_report, encoding="utf-8")
         except OSError as error:
-            messagebox.showerror("PhishLens", f"Could not save report: {error}")
+            messagebox.showerror("FhniX", f"Could not save report: {error}")
             return
         self._set_status(f"Report saved to {selection}")
 
@@ -860,7 +860,7 @@ def launch_gui(initial_model_path: Path | None = None) -> None:
     except Exception as error:  # pragma: no cover - depends on local Tk availability
         raise GuiError(f"desktop UI could not start: {error}") from error
 
-    app = PhishLensApp(root, initial_model_path=initial_model_path)
+    app = FhniXApp(root, initial_model_path=initial_model_path)
     app.root.mainloop()
 
 

@@ -24,13 +24,13 @@ COMMANDS = {"analyze", "scan", "train", "mailbox", "gui"}
 
 
 def _add_output_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--model", type=Path, help="trained JSON model created by 'phishlens train'")
+    parser.add_argument("--model", type=Path, help="trained JSON model created by 'fhnix train'")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="phishlens",
+        prog="fhnix",
         description="Analyze email locally with explainable rules and an optional trained model.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -56,8 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
         "-o",
         "--output",
         type=Path,
-        default=Path("phishlens-model.json"),
-        help="model output path (default: phishlens-model.json)",
+        default=Path("fhnix-model.json"),
+        help="model output path (default: fhnix-model.json)",
     )
     train_parser.add_argument(
         "--validation-split",
@@ -99,7 +99,7 @@ def _load_model(path: Path | None) -> NaiveBayesModel | None:
 
 
 def _print_error(message: str) -> None:
-    print(f"phishlens: {message}", file=sys.stderr)
+    print(f"fhnix: {message}", file=sys.stderr)
 
 
 def _result_exit_code(results: list[AnalysisResult]) -> int:
@@ -183,11 +183,16 @@ def _run_train(args: argparse.Namespace) -> int:
 
 
 def _run_mailbox(args: argparse.Namespace) -> int:
-    username = args.username or os.environ.get("PHISHLENS_IMAP_USERNAME", "")
-    secret_name = "PHISHLENS_OAUTH_TOKEN" if args.auth == "oauth2" else "PHISHLENS_IMAP_PASSWORD"
-    secret = os.environ.get(secret_name, "")
+    username = (
+        args.username
+        or os.environ.get("FHNIX_IMAP_USERNAME", "")
+        or os.environ.get("PHISHLENS_IMAP_USERNAME", "")
+    )
+    secret_name = "FHNIX_OAUTH_TOKEN" if args.auth == "oauth2" else "FHNIX_IMAP_PASSWORD"
+    legacy_secret_name = "PHISHLENS_OAUTH_TOKEN" if args.auth == "oauth2" else "PHISHLENS_IMAP_PASSWORD"
+    secret = os.environ.get(secret_name, "") or os.environ.get(legacy_secret_name, "")
     if not username:
-        _print_error("missing mailbox username; use --username or PHISHLENS_IMAP_USERNAME")
+        _print_error("missing mailbox username; use --username or FHNIX_IMAP_USERNAME")
         return 2
     if not secret:
         _print_error(f"missing secret; set the {secret_name} environment variable")
@@ -216,7 +221,7 @@ def _run_mailbox(args: argparse.Namespace) -> int:
     if not results:
         print("No matching messages found.")
         return 0
-    title = f"PhishLens {args.provider} mailbox scan"
+    title = f"FhniX {args.provider} mailbox scan"
     print(render_batch_json(results) if args.json else render_batch_text(results, title=title))
     return _result_exit_code(results)
 

@@ -26,7 +26,7 @@ def terminal_safe(value: object, limit: int = 240) -> str:
 
 def render_text(result: AnalysisResult) -> str:
     lines = [
-        "PhishLens analysis",
+        "FhniX analysis",
         "=" * 18,
         f"Source:    {terminal_safe(result.source)}",
         f"Subject:   {terminal_safe(result.headers['subject'] or '<missing>')}",
@@ -111,7 +111,7 @@ def render_json(result: AnalysisResult, pretty: bool = True) -> str:
     return json.dumps(payload, indent=2 if pretty else None, ensure_ascii=False)
 
 
-def render_batch_text(results: list[AnalysisResult], title: str = "PhishLens batch scan") -> str:
+def render_batch_text(results: list[AnalysisResult], title: str = "FhniX batch scan") -> str:
     counts = {
         verdict: sum(result.verdict == verdict for result in results)
         for verdict in ("high-risk", "suspicious", "low-risk")
@@ -128,7 +128,7 @@ def render_batch_text(results: list[AnalysisResult], title: str = "PhishLens bat
         lines.append(
             f"[{result.verdict.upper():10}] {result.score:3}/100 | {subject} | {terminal_safe(result.source)}"
         )
-    lines.extend(["", "Run 'phishlens analyze <file> --model <model>' for full findings."])
+    lines.extend(["", "Run 'fhnix analyze <file> --model <model>' for full findings."])
     return "\n".join(lines)
 
 
@@ -178,7 +178,7 @@ def render_batch_csv(results: list[AnalysisResult]) -> str:
 
 def render_training_report(report: TrainingReport, model_path: str) -> str:
     lines = [
-        "PhishLens model trained",
+        "FhniX model trained",
         "=======================",
         f"Model: {terminal_safe(model_path)}",
         "Training: "

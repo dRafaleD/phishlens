@@ -3,13 +3,13 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "phishlens"
-version = "0.4.0"
+name = "fhnix"
+version = "0.5.0"
 description = "Explainable phishing analysis for EML files and IMAP mailboxes"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "PhishLens contributors" }]
+authors = [{ name = "FhniX contributors" }]
 keywords = ["security", "phishing", "email", "eml", "imap", "machine-learning", "gui", "cli"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -21,6 +21,7 @@ classifiers = [
 ]
 
 [project.scripts]
+fhnix = "phishlens.cli:main"
 phishlens = "phishlens.cli:main"
 
 [tool.setuptools.packages.find]

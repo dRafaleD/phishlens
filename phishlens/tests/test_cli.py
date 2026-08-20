@@ -34,7 +34,7 @@ class CliTests(unittest.TestCase):
                 exit_code = main([str(message_path)])
 
             self.assertEqual(exit_code, 0)
-            self.assertIn("PhishLens analysis", output.getvalue())
+            self.assertIn("FhniX analysis", output.getvalue())
 
     def test_scans_eml_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
