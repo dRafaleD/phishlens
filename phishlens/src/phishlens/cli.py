@@ -43,6 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser = subparsers.add_parser("scan", help="analyze all .eml files in a directory")
     scan_parser.add_argument("directory", type=Path, help="directory containing .eml files")
     scan_parser.add_argument("-r", "--recursive", action="store_true", help="include subdirectories")
+    scan_parser.add_argument("-o", "--output", type=Path, help="also save the folder report to this file")
     _add_output_options(scan_parser)
 
     train_parser = subparsers.add_parser("train", help="train a local model from labeled .eml files")
@@ -149,7 +150,14 @@ def _run_scan(args: argparse.Namespace) -> int:
             _print_error(f"skipped {file_path}: {error}")
     if not results:
         return 2
-    print(render_batch_json(results) if args.json else render_batch_text(results))
+    report = render_batch_json(results) if args.json else render_batch_text(results)
+    if args.output is not None:
+        try:
+            args.output.write_text(report, encoding="utf-8")
+        except OSError as error:
+            _print_error(f"could not write report: {error}")
+            return 2
+    print(report)
     return _result_exit_code(results)
 
 

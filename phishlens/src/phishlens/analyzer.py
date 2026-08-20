@@ -136,6 +136,23 @@ SHORTENER_DOMAINS = {
     "t.co",
     "tinyurl.com",
 }
+SUSPICIOUS_TLDS = {
+    "click",
+    "country",
+    "gq",
+    "link",
+    "live",
+    "mom",
+    "rest",
+    "shop",
+    "stream",
+    "surf",
+    "top",
+    "work",
+    "xyz",
+    "zip",
+}
+SAFE_WEB_PORTS = {80, 443}
 COMMON_SECOND_LEVEL_SUFFIXES = {
     "co.uk",
     "com.au",
@@ -168,6 +185,7 @@ class AttachmentInfo:
     filename: str
     content_type: str
     size_bytes: int
+    signature: str = ""
 
 
 @dataclass(frozen=True)
@@ -259,9 +277,11 @@ def analyze_message(
         "subject": str(message.get("Subject", "")),
         "date": str(message.get("Date", "")),
         "message_id": str(message.get("Message-ID", "")),
+        "to": str(message.get("To", "")),
     }
 
     _analyze_sender(headers, findings)
+    _analyze_header_integrity(message, headers, findings)
     _analyze_brand_identity(headers, findings)
     authentication = _authentication_results(message)
     _analyze_authentication(authentication, findings)
@@ -354,6 +374,33 @@ def _analyze_sender(headers: dict[str, str], findings: list[Finding]) -> None:
                 10,
                 "Return-Path domain mismatch",
                 f"From uses {sender}, but Return-Path uses {return_path}.",
+            )
+        )
+
+
+def _analyze_header_integrity(message: Message, headers: dict[str, str], findings: list[Finding]) -> None:
+    from_headers = message.get_all("From", [])
+    if len(from_headers) > 1:
+        findings.append(
+            Finding(
+                "HEADER_MULTIPLE_FROM",
+                "high",
+                30,
+                "Multiple From headers",
+                f"The message contains {len(from_headers)} From headers. This can create sender ambiguity.",
+            )
+        )
+
+    joined_headers = " ".join(headers.values())
+    invisible_controls = "\u200b\u200c\u200d\ufeff\u202a\u202b\u202d\u202e\u2066\u2067\u2068\u2069"
+    if any(character in joined_headers for character in invisible_controls):
+        findings.append(
+            Finding(
+                "HEADER_INVISIBLE_CHARACTERS",
+                "medium",
+                18,
+                "Invisible characters in headers",
+                "Sender or routing headers contain invisible Unicode controls that can alter how text appears.",
             )
         )
 
@@ -533,7 +580,12 @@ def _message_parts(message: Message) -> tuple[list[str], list[str], list[Attachm
         payload = part.get_payload(decode=True) or b""
         if filename or disposition == "attachment":
             attachments.append(
-                AttachmentInfo(filename=filename or "<unnamed>", content_type=part.get_content_type(), size_bytes=len(payload))
+                AttachmentInfo(
+                    filename=filename or "<unnamed>",
+                    content_type=part.get_content_type(),
+                    size_bytes=len(payload),
+                    signature=_attachment_signature(payload),
+                )
             )
             continue
         if part.get_content_type() not in {"text/plain", "text/html"}:
@@ -547,6 +599,16 @@ def _message_parts(message: Message) -> tuple[list[str], list[str], list[Attachm
         else:
             html_parts.append(str(content))
     return plain_parts, html_parts, attachments
+
+
+def _attachment_signature(payload: bytes) -> str:
+    if payload.startswith(b"MZ"):
+        return "windows-executable"
+    if payload.startswith(b"PK\x03\x04"):
+        return "zip-container"
+    if payload.startswith(b"%PDF-"):
+        return "pdf"
+    return ""
 
 
 def _clean_url(value: str) -> str:
@@ -648,6 +710,17 @@ def _analyze_urls(
         findings.append(
             Finding("URL_SHORTENER", "medium", 12, "Shortened link detected", "Hosts: " + ", ".join(shortened[:3]))
         )
+    suspicious_tlds = sorted(host for host in hosts if host.rsplit(".", 1)[-1] in SUSPICIOUS_TLDS)
+    if suspicious_tlds:
+        findings.append(
+            Finding(
+                "URL_HIGH_RISK_TLD",
+                "low",
+                8,
+                "Link uses a high-abuse top-level domain",
+                "Hosts: " + ", ".join(suspicious_tlds[:3]),
+            )
+        )
     credential_urls: list[str] = []
     for item in urls:
         try:
@@ -676,6 +749,7 @@ def _analyze_urls(
         )
 
     redirect_hosts: set[str] = set()
+    non_standard_port_hosts: set[str] = set()
     credential_mismatches: set[str] = set()
     lookalike_hosts: set[str] = set()
     sender_base = _base_domain(sender_domain) if sender_domain else ""
@@ -684,6 +758,12 @@ def _analyze_urls(
             parsed = urlsplit(item.url)
         except ValueError:
             continue
+        try:
+            port = parsed.port
+        except ValueError:
+            port = None
+        if port is not None and port not in SAFE_WEB_PORTS:
+            non_standard_port_hosts.add(f"{item.host}:{port}")
         parameters = parse_qs(parsed.query, keep_blank_values=True)
         if any(
             key.casefold() in REDIRECT_PARAMETER_NAMES
@@ -718,6 +798,16 @@ def _analyze_urls(
                 12,
                 "Link contains an external redirect target",
                 "Hosts: " + ", ".join(sorted(redirect_hosts)[:3]),
+            )
+        )
+    if non_standard_port_hosts:
+        findings.append(
+            Finding(
+                "URL_NONSTANDARD_PORT",
+                "low",
+                8,
+                "Link uses a non-standard web port",
+                "Hosts: " + ", ".join(sorted(non_standard_port_hosts)[:3]),
             )
         )
     if credential_mismatches:
@@ -825,5 +915,15 @@ def _analyze_attachments(attachments: list[AttachmentInfo], findings: list[Findi
                     25,
                     "Attachment name uses bidirectional controls",
                     "The filename contains invisible direction controls that can disguise its extension.",
+                )
+            )
+        if attachment.signature == "windows-executable" and extension not in DANGEROUS_EXTENSIONS:
+            findings.append(
+                Finding(
+                    "ATTACHMENT_EXECUTABLE_CONTENT",
+                    "high",
+                    35,
+                    "Attachment content looks executable",
+                    f"Attachment {attachment.filename} starts with a Windows executable signature despite its filename.",
                 )
             )

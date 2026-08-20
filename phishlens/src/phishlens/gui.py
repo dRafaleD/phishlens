@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 import tkinter as tk
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Thread
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable
 
-from .analyzer import AnalysisResult, Finding, analyze_eml
-from .classifier import ModelError, NaiveBayesModel, TrainingReport, train_from_directory
-from .reporting import render_batch_text, render_text, render_training_report
+if __package__ in {None, ""}:
+    package_root = Path(__file__).resolve().parent.parent
+    if str(package_root) not in sys.path:
+        sys.path.insert(0, str(package_root))
+    from phishlens.analyzer import AnalysisResult, Finding, analyze_eml
+    from phishlens.classifier import ModelError, NaiveBayesModel, TrainingReport, train_from_directory
+    from phishlens.reporting import render_batch_csv, render_batch_text, render_text, render_training_report
+else:
+    from .analyzer import AnalysisResult, Finding, analyze_eml
+    from .classifier import ModelError, NaiveBayesModel, TrainingReport, train_from_directory
+    from .reporting import render_batch_csv, render_batch_text, render_text, render_training_report
 
 
 class GuiError(RuntimeError):
@@ -46,7 +55,7 @@ class PhishLensApp:
         window_x = max(0, (screen_width - window_width) // 2)
         window_y = max(0, (screen_height - window_height) // 2)
         self.root.geometry(f"{window_width}x{window_height}+{window_x}+{window_y}")
-        self.root.minsize(min(900, window_width), min(650, window_height))
+        self.root.minsize(min(920, window_width), min(680, window_height))
         self.root.configure(background=self.CANVAS)
 
         self.status_var = tk.StringVar(value="Ready")
@@ -68,6 +77,7 @@ class PhishLensApp:
         self._action_buttons: list[ttk.Button] = []
         self._row_payload: dict[str, Finding | AnalysisResult] = {}
         self._displayed_report = ""
+        self._scan_results: list[AnalysisResult] = []
 
         self._configure_styles()
         self._build_layout()
@@ -178,7 +188,7 @@ class PhishLensApp:
         self._build_header(container).grid(row=0, column=0, sticky="ew")
         self._build_model_bar(container).grid(row=1, column=0, sticky="ew", pady=(8, 8))
 
-        self.notebook = ttk.Notebook(container, height=145)
+        self.notebook = ttk.Notebook(container)
         self.notebook.grid(row=2, column=0, sticky="ew")
         self.notebook.add(self._build_analyze_tab(self.notebook), text="  Analyze email  ")
         self.notebook.add(self._build_scan_tab(self.notebook), text="  Scan folder  ")
@@ -250,16 +260,18 @@ class PhishLensApp:
         return bar
 
     def _tab_shell(self, parent: ttk.Notebook, title: str, help_text: str) -> ttk.Frame:
-        frame = ttk.Frame(parent, style="Surface.TFrame", padding=(14, 9))
+        frame = ttk.Frame(parent, style="Surface.TFrame", padding=(16, 12))
+        frame.columnconfigure(0, minsize=100)
         frame.columnconfigure(1, weight=1)
-        frame.columnconfigure(3, minsize=118)
+        frame.columnconfigure(2, minsize=96)
+        frame.columnconfigure(3, minsize=148)
         tk.Label(
             frame,
             text=f"{title.upper()}  //  {help_text}",
             background=self.SURFACE,
             foreground=self.MUTED,
             font=("Cascadia Mono", 8),
-        ).grid(row=0, column=0, columnspan=3, sticky="w")
+        ).grid(row=0, column=0, columnspan=4, sticky="w")
         return frame
 
     def _build_analyze_tab(self, parent: ttk.Notebook) -> ttk.Frame:
@@ -274,11 +286,11 @@ class PhishLensApp:
             background=self.SURFACE,
             foreground=self.INK,
             font=("Cascadia Mono", 9, "bold"),
-        ).grid(row=1, column=0, sticky="w", pady=(8, 0))
-        ttk.Entry(frame, textvariable=self.analysis_file_var).grid(row=1, column=1, sticky="ew", padx=10, pady=(8, 0))
-        ttk.Button(frame, text="Browse...", command=self._choose_analysis_file).grid(row=1, column=2, pady=(8, 0))
+        ).grid(row=1, column=0, sticky="w", pady=(10, 0))
+        ttk.Entry(frame, textvariable=self.analysis_file_var).grid(row=1, column=1, sticky="ew", padx=(12, 8), pady=(10, 0))
+        ttk.Button(frame, text="Browse...", command=self._choose_analysis_file).grid(row=1, column=2, sticky="ew", pady=(10, 0))
         button = ttk.Button(frame, text="Analyze message", style="Primary.TButton", command=self._analyze_selected_file)
-        button.grid(row=1, column=3, padx=(8, 0), pady=(8, 0), sticky="e")
+        button.grid(row=1, column=3, padx=(8, 0), pady=(10, 0), sticky="ew")
         self._action_buttons.append(button)
         return frame
 
@@ -294,15 +306,18 @@ class PhishLensApp:
             background=self.SURFACE,
             foreground=self.INK,
             font=("Cascadia Mono", 9, "bold"),
-        ).grid(row=1, column=0, sticky="w", pady=(8, 0))
-        ttk.Entry(frame, textvariable=self.scan_directory_var).grid(row=1, column=1, sticky="ew", padx=10, pady=(8, 0))
-        ttk.Button(frame, text="Browse...", command=self._choose_scan_directory).grid(row=1, column=2, pady=(8, 0))
+        ).grid(row=1, column=0, sticky="w", pady=(10, 0))
+        ttk.Entry(frame, textvariable=self.scan_directory_var).grid(row=1, column=1, sticky="ew", padx=(12, 8), pady=(10, 0))
+        ttk.Button(frame, text="Browse...", command=self._choose_scan_directory).grid(row=1, column=2, sticky="ew", pady=(10, 0))
         ttk.Checkbutton(frame, text="Include subfolders", variable=self.scan_recursive).grid(
-            row=2, column=1, sticky="w", padx=8, pady=(7, 0)
+            row=2, column=1, sticky="w", padx=(12, 0), pady=(8, 0)
         )
         button = ttk.Button(frame, text="Scan folder", style="Primary.TButton", command=self._scan_directory)
-        button.grid(row=1, column=3, padx=(8, 0), pady=(8, 0), sticky="e")
+        button.grid(row=1, column=3, padx=(8, 0), pady=(10, 0), sticky="ew")
         self._action_buttons.append(button)
+        ttk.Button(frame, text="Export CSV...", command=self._export_scan_csv).grid(
+            row=2, column=3, padx=(8, 0), pady=(8, 0), sticky="ew"
+        )
         return frame
 
     def _build_train_tab(self, parent: ttk.Notebook) -> ttk.Frame:
@@ -319,14 +334,14 @@ class PhishLensApp:
                 background=self.SURFACE,
                 foreground=self.INK,
                 font=("Cascadia Mono", 9, "bold"),
-            ).grid(row=row, column=0, sticky="w", pady=(7, 0))
+            ).grid(row=row, column=0, sticky="w", pady=((10 if row == 1 else 8), 0))
 
-        ttk.Entry(frame, textvariable=self.train_dataset_var).grid(row=1, column=1, sticky="ew", padx=10, pady=(7, 0))
-        ttk.Button(frame, text="Browse...", command=self._choose_train_dataset).grid(row=1, column=2, pady=(7, 0))
-        ttk.Entry(frame, textvariable=self.train_output_var).grid(row=2, column=1, sticky="ew", padx=10, pady=(7, 0))
-        ttk.Button(frame, text="Save as...", command=self._choose_train_output).grid(row=2, column=2, pady=(7, 0))
+        ttk.Entry(frame, textvariable=self.train_dataset_var).grid(row=1, column=1, sticky="ew", padx=(12, 8), pady=(10, 0))
+        ttk.Button(frame, text="Browse...", command=self._choose_train_dataset).grid(row=1, column=2, sticky="ew", pady=(10, 0))
+        ttk.Entry(frame, textvariable=self.train_output_var).grid(row=2, column=1, sticky="ew", padx=(12, 8), pady=(8, 0))
+        ttk.Button(frame, text="Save as...", command=self._choose_train_output).grid(row=2, column=2, sticky="ew", pady=(8, 0))
         validation_row = ttk.Frame(frame, style="Surface.TFrame")
-        validation_row.grid(row=0, column=3, sticky="e")
+        validation_row.grid(row=1, column=3, sticky="ew", padx=(8, 0), pady=(10, 0))
         tk.Label(
             validation_row,
             text="VAL SPLIT",
@@ -336,7 +351,7 @@ class PhishLensApp:
         ).grid(row=0, column=0, padx=(0, 6))
         ttk.Entry(validation_row, textvariable=self.validation_split_var, width=5).grid(row=0, column=1)
         button = ttk.Button(frame, text="Train model", style="Primary.TButton", command=self._train_model)
-        button.grid(row=2, column=3, padx=(8, 0), pady=(7, 0), sticky="e")
+        button.grid(row=2, column=3, padx=(8, 0), pady=(8, 0), sticky="ew")
         self._action_buttons.append(button)
         return frame
 
@@ -399,6 +414,10 @@ class PhishLensApp:
             pady=8,
         )
         self.evidence_label.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        findings_panel.bind(
+            "<Configure>",
+            lambda event: self.evidence_label.configure(wraplength=max(260, event.width - 34)),
+        )
 
         report_panel = ttk.Frame(results_body, style="Surface.TFrame", padding=10)
         report_panel.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
@@ -695,6 +714,7 @@ class PhishLensApp:
         if not isinstance(root, Path) or not isinstance(results, list) or not isinstance(skipped, int):
             raise GuiError("folder scan returned invalid data")
         ordered = sorted(results, key=lambda item: (-item.score, item.source.casefold()))
+        self._scan_results = ordered
         highest = ordered[0]
         signal_count = sum(len(result.findings) for result in results)
         self._update_metrics(highest.score, highest.verdict, signal_count, highest)
@@ -715,6 +735,25 @@ class PhishLensApp:
         self._set_output(report)
         self.evidence_var.set("Select a message to open its complete analysis report.")
         self._set_status(f"Scanned {len(results)} messages; skipped {skipped}")
+
+    def _export_scan_csv(self) -> None:
+        if not self._scan_results:
+            messagebox.showinfo("PhishLens", "Run a folder scan before exporting a CSV report.")
+            return
+        selection = filedialog.asksaveasfilename(
+            title="Export folder scan as CSV",
+            defaultextension=".csv",
+            initialfile="phishlens-folder-scan.csv",
+            filetypes=[("CSV spreadsheet", "*.csv"), ("All files", "*.*")],
+        )
+        if not selection:
+            return
+        try:
+            Path(selection).write_text(render_batch_csv(self._scan_results), encoding="utf-8-sig")
+        except OSError as error:
+            messagebox.showerror("PhishLens", f"Could not export CSV: {error}")
+            return
+        self._set_status(f"CSV folder report saved to {selection}")
 
     def _train_model(self) -> None:
         dataset = Path(self.train_dataset_var.get().strip())
@@ -823,3 +862,13 @@ def launch_gui(initial_model_path: Path | None = None) -> None:
 
     app = PhishLensApp(root, initial_model_path=initial_model_path)
     app.root.mainloop()
+
+
+def main(argv: list[str] | None = None) -> int:
+    _ = argv
+    launch_gui()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

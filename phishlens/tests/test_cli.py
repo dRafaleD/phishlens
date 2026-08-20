@@ -49,6 +49,20 @@ class CliTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("Messages: 1", output.getvalue())
 
+    def test_scan_can_save_a_json_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            (root / "safe.eml").write_text(SAFE_MESSAGE, encoding="utf-8")
+            report_path = root / "folder-report.json"
+            output = io.StringIO()
+
+            with redirect_stdout(output):
+                exit_code = main(["scan", str(root), "--json", "--output", str(report_path)])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(report_path.is_file())
+            self.assertIn('"messages": 1', report_path.read_text(encoding="utf-8"))
+
     def test_gui_command_invokes_launcher(self) -> None:
         with patch("phishlens.cli.launch_gui") as launch_gui:
             exit_code = main(["gui"])

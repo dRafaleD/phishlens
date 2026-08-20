@@ -189,6 +189,36 @@ Open http://[broken/login for details.
         self.assertEqual(len(result.urls), 1)
         self.assertEqual(result.urls[0].host, "")
 
+    def test_flags_header_spoofing_executable_content_and_risky_link_shape(self) -> None:
+        message = parse_message(
+            """From: Billing <billing@example.com>
+From: Security <security@example.com>
+Subject: Review
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary=demo
+
+--demo
+Content-Type: text/plain; charset=utf-8
+
+Review http://invoice-check.top:8443/portal
+--demo
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="invoice.pdf"
+Content-Transfer-Encoding: base64
+
+TVqQAAMAAAAEAAAA
+--demo--
+"""
+        )
+
+        result = analyze_message(message)
+        rule_ids = {finding.rule_id for finding in result.findings}
+
+        self.assertIn("HEADER_MULTIPLE_FROM", rule_ids)
+        self.assertIn("URL_HIGH_RISK_TLD", rule_ids)
+        self.assertIn("URL_NONSTANDARD_PORT", rule_ids)
+        self.assertIn("ATTACHMENT_EXECUTABLE_CONTENT", rule_ids)
+
 
 if __name__ == "__main__":
     unittest.main()
